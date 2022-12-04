@@ -92,7 +92,7 @@ bc_install() {
     sleep 1
 
     ########## PREPARE DIRECTORIES ##########
-    echo "Bytes Crafter: Preparing WordPress directory..."
+    echo "Bytes Crafter: Preparing Test directory..."
     echo ""
     sleep 1
         mkdir /var/www/test
@@ -181,8 +181,8 @@ EOF
     echo ""
     sleep 1
 
-    ########## INSTALLING WORDPRESS ##########
-    echo "Bytes Crafter: Installing WordPress..."
+    ########## INSTALLING TEST ##########
+    echo "Bytes Crafter: Installing Test..."
     echo ""
         wget -c https://fossbilling.org/downloads/stable
         unzip stable
@@ -197,9 +197,9 @@ EOF
     echo ""
         local start="Bytes Crafter: You can access http://"
         local mid=`ip a | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p'`
-        local end="/ to setup your WordPress."
+        local end="/ to setup your test."
         echo "Bytes Crafter: $start$mid$end"
-        echo "Bytes Crafter: MySQL db: wordpress user: wordpress pwd: wordpress "
+        echo "Bytes Crafter: MySQL db: test user: test pwd: test "
         echo "Bytes Crafter: Thank you for using our script, Bytes Crafter! ..."
     echo ""
     sleep 1
