@@ -65,9 +65,9 @@ bc_install() {
 
     echo "Bytes Crafter: CREATING DB and USER ..."
     echo ""
-        mysql -uroot -proot -e "CREATE DATABASE wordpress /*\!40100 DEFAULT CHARACTER SET utf8 */;"
-        mysql -uroot -proot -e "CREATE USER wordpress@localhost IDENTIFIED BY 'wordpress';"
-        mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON wordpress.* TO 'wordpress'@'localhost';"
+        mysql -uroot -proot -e "CREATE DATABASE test /*\!40100 DEFAULT CHARACTER SET utf8 */;"
+        mysql -uroot -proot -e "CREATE USER test@localhost IDENTIFIED BY 'test';"
+        mysql -uroot -proot -e "GRANT ALL PRIVILEGES ON test.* TO 'test'@'localhost';"
         mysql -uroot -proot -e "FLUSH PRIVILEGES;"
     echo ""
     sleep 1
@@ -95,9 +95,9 @@ bc_install() {
     echo "Bytes Crafter: Preparing WordPress directory..."
     echo ""
     sleep 1
-        mkdir /var/www/wordpress
-        echo "<?php phpinfo(); ?>" >/var/www/wordpress/info.php
-        chown -R www-data:www-data /var/www/wordpress
+        mkdir /var/www/test
+        echo "<?php phpinfo(); ?>" >/var/www/test/info.php
+        chown -R www-data:www-data /var/www/test
     echo ""
     sleep 1
 
@@ -108,29 +108,66 @@ bc_install() {
 cat >/etc/nginx/sites-enabled/default <<"EOF"
 server {
     listen 80;
-    listen [::]:80;
 
-    root /var/www/wordpress;
-    index index.php index.html index.htm;
+    set $root_path '/var/www/test';
+    server_name test;
 
-    server_name _;
+    index index.html index.htm index.php;
+    root $root_path;
+    try_files $uri $uri/ @rewrite;
+    sendfile off;
+     
+    include /etc/nginx/mime.types;
 
-    location / {
-        try_files $uri $uri/ /index.php?$args;
+    # Block access to sensitive files and return 404 to make it indistinguishable from a missing file
+    location ~* .(ini|sh|inc|bak|twig|sql)$ {
+        return 404;
     }
 
-    location ~ ^/wp-json/ {
-        # if permalinks not enabled
-        rewrite ^/wp-json/(.*?)$ /?rest_route=/$1 last;
+    # Block access to hidden files except .well-known
+    location ~ /\.(?!well-known\/) {
+        return 404;
     }
 
-    location ~ \.php$ {
-        include         fastcgi_params;
-        fastcgi_pass    unix:/run/php/php7.3-fpm.sock;
-        fastcgi_param   SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        fastcgi_index   index.php;
+    # Disable PHP execution in /bb-uploads
+    location ~* /bb-uploads/.*\.php$ {
+        return 404;
+    }
+        
+    # Deny access to /bb-data
+    location ~* /bb-data/ {
+        return 404;
+    }
+
+    location @rewrite {
+        rewrite ^/page/(.*)$ /index.php?_url=/custompages/$1;
+        rewrite ^/(.*)$ /index.php?_url=/$1;
+    }
+
+    location ~ \.php {
+        fastcgi_split_path_info ^(.+\.php)(/.+)$;
+
+        # fastcgi_pass need to be changed according your server setup:
+        # phpx.x is your server setup
+        # examples: /var/run/phpx.x-fpm.sock, /var/run/php/phpx.x-fpm.sock or /run/php/phpx.x-fpm.sock are all valid options 
+        # Or even localhost:port (Default 9000 will work fine) 
+        # Please check your server setup
+
+        fastcgi_pass unix:/run/php/phpx.x-fpm.sock
+
+        fastcgi_param PATH_INFO       $fastcgi_path_info;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_intercept_errors on;
+
+        include fastcgi_params;
+    }
+
+    location ~* ^/(css|img|js|flv|swf|download)/(.+)$ {
+        root $root_path;
+        expires off;
     }
 }
+
 EOF
     echo ""
     sleep 1
@@ -147,11 +184,11 @@ EOF
     ########## INSTALLING WORDPRESS ##########
     echo "Bytes Crafter: Installing WordPress..."
     echo ""
-        wget -c http://wordpress.org/latest.tar.gz
-        tar -xzvf latest.tar.gz
-        rsync -av wordpress/* /var/www/wordpress/
-        chown -R www-data:www-data /var/www/wordpress/
-        chmod -R 755 /var/www/wordpress/
+        wget -c https://fossbilling.org/downloads/stable
+        unzip stable
+        rsync -av test/* /var/www/test/
+        chown -R www-data:www-data /var/www/test/
+        chmod -R 755 /var/www/test/
     echo ""
     sleep 1
 
